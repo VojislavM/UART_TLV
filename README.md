@@ -1,6 +1,6 @@
 # STM_UART_IRQ
 
-This repo represents the configuration of UART with RX interrupt for [STM32F411RET6][MCU_LINK] MCU. This MCU is located on the [STM NUCLEO][BOARD_LINK] board.
+This repo represents the configuration of TLV protocol over UART with RX interrupt for [STM32F411RET6][MCU_LINK] MCU. This MCU is located on the [STM NUCLEO][BOARD_LINK] board.
 
 ### Why NUCLEO board?
 
@@ -31,9 +31,8 @@ Two UART ports are initalize in software. UART1 and UART2.
 * UART2 is on port A, pins PA2 (USART2_TX) and PA3 (USART2_RX).
 
 
-### Software
-The project was generated with CubeMX for STM, the Additional code is commented.
-
+### TLV protocol
+https://github.com/IRNAS/koruza-driver
 
 
 [MCU_LINK]: <http://www.st.com/web/catalog/mmc/FM141/SC1169/SS1577/LN1877/PF260049>
