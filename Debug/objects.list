@@ -16,6 +16,7 @@
 "Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.o"
 "Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.o"
 "Src/crc32.o"
+"Src/frame.o"
 "Src/inet.o"
 "Src/main.o"
 "Src/message.o"

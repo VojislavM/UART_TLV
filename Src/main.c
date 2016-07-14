@@ -58,7 +58,7 @@ UART_HandleTypeDef huart2;
 /* Private variables ---------------------------------------------------------*/
 int i = 0;
 char buffer[100];
-int len;
+int len, message_len = 0;
 
 char Rx_indx, Rx_data[2], Rx_Buffer[100], Transfer_cplt;
 /* USER CODE END PV */
@@ -87,18 +87,20 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		{
 		if (Rx_indx==0) {for (i=0;i<100;i++) Rx_Buffer[i]=0;}	//clear Rx_Buffer before receiving new data
 
-		if (Rx_data[0]!=13)	//if received data different from ascii 13 (enter)
-			{
+		if (Rx_data[0]!=0x02)	//if received data different from 0x02
+		{
 			Rx_Buffer[Rx_indx++]=Rx_data[0];	//add data to Rx_Buffer
-			}
-		else			//if received data = 13
-			{
+		}
+		else			//if received data = 0x02
+		{
+			Rx_Buffer[Rx_indx++]=Rx_data[0];
+			message_len = Rx_indx;
 			Rx_indx=0;
 			Transfer_cplt=1;//transfer complete, data is ready to read
-			}
+		}
 
 		HAL_UART_Receive_IT(&huart1, Rx_data, 1);	//activate UART receive interrupt every time
-		}
+	}
 
 }
 /* USER CODE END 0 */
@@ -140,9 +142,10 @@ int main(void)
 
 			    //HAL_UART_Transmit(&huart1, "t", 1, 1000);
 				sprintf(buffer,"%s\r\n",Rx_Buffer);
-				len=strlen(buffer);
-				HAL_UART_Transmit(&huart1, buffer, len, 1000);
+				len=strlen(Rx_Buffer);
+				HAL_UART_Transmit(&huart1, Rx_Buffer, message_len, 1000);
 				printf("\r\n %s", buffer);
+				for (i=0;i<100;i++) Rx_Buffer[i]=0;
 				Transfer_cplt=0;		//reset transfer_complete variable
 				//HAL_Delay(500);
 

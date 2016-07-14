@@ -1,4 +1,4 @@
-# STM_UART_IRQ
+# UART_TLV
 
 This repo represents the configuration of TLV protocol over UART with RX interrupt for [STM32F411RET6][MCU_LINK] MCU. This MCU is located on the [STM NUCLEO][BOARD_LINK] board.
 

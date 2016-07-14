@@ -5,6 +5,7 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
 ../Src/crc32.c \
+../Src/frame.c \
 ../Src/inet.c \
 ../Src/main.c \
 ../Src/message.c \
@@ -14,6 +15,7 @@ C_SRCS += \
 
 OBJS += \
 ./Src/crc32.o \
+./Src/frame.o \
 ./Src/inet.o \
 ./Src/main.o \
 ./Src/message.o \
@@ -23,6 +25,7 @@ OBJS += \
 
 C_DEPS += \
 ./Src/crc32.d \
+./Src/frame.d \
 ./Src/inet.d \
 ./Src/main.d \
 ./Src/message.d \
