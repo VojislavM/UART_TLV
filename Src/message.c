@@ -100,7 +100,7 @@ message_result_t message_parse(message_t *message, const uint8_t *data, size_t l
   return MESSAGE_SUCCESS;
 }
 
-message_result_t message_tlv_add(message_t *message, uint8_t type, uint16_t length, uint8_t *value)
+message_result_t message_tlv_add(message_t *message, uint8_t type, uint16_t length, const uint8_t *value)
 {
   if (message->length >= MAX_TLV_COUNT) {
     return MESSAGE_ERROR_TOO_MANY_TLVS;
@@ -120,9 +120,31 @@ message_result_t message_tlv_add(message_t *message, uint8_t type, uint16_t leng
   return MESSAGE_SUCCESS;
 }
 
-message_result_t message_tlv_add_command(message_t *message, uint8_t command)
+message_result_t message_tlv_add_command(message_t *message, tlv_command_t command)
 {
-  return message_tlv_add(message, TLV_COMMAND, sizeof(uint8_t), (uint8_t*) &command);
+  uint8_t _command = command;
+  return message_tlv_add(message, TLV_COMMAND, sizeof(uint8_t), (uint8_t*) &_command);
+}
+
+message_result_t message_tlv_add_reply(message_t *message, tlv_reply_t reply)
+{
+  uint8_t _reply = reply;
+  return message_tlv_add(message, TLV_REPLY, sizeof(uint8_t), (uint8_t*) &_reply);
+}
+
+message_result_t message_tlv_add_motor_position(message_t *message, const tlv_motor_position_t *position)
+{
+  tlv_motor_position_t tmp;
+  tmp.x = htonl(position->x);
+  tmp.y = htonl(position->y);
+  tmp.z = htonl(position->z);
+  return message_tlv_add(message, TLV_MOTOR_POSITION, sizeof(tlv_motor_position_t), (uint8_t*) &tmp);
+}
+
+message_result_t message_tlv_add_current_reading(message_t *message, uint16_t current)
+{
+  current = htons(current);
+  return message_tlv_add(message, TLV_CURRENT_READING, sizeof(uint16_t), (uint8_t*) &current);
 }
 
 message_result_t message_tlv_add_checksum(message_t *message)
@@ -131,7 +153,82 @@ message_result_t message_tlv_add_checksum(message_t *message)
   return message_tlv_add(message, TLV_CHECKSUM, sizeof(uint32_t), (uint8_t*) &checksum);
 }
 
-size_t message_serialize(uint8_t *buffer, size_t length, const message_t *message)
+message_result_t message_tlv_get(const message_t *message, uint8_t type, uint8_t *destination, size_t length)
+{
+  for (size_t i = 0; i < message->length; i++) {
+    if (message->tlv[i].type == type) {
+      assert(message->tlv[i].length <= length);
+      memcpy(destination, message->tlv[i].value, message->tlv[i].length);
+      return MESSAGE_SUCCESS;
+    }
+  }
+
+  return MESSAGE_ERROR_TLV_NOT_FOUND;
+}
+
+message_result_t message_tlv_get_command(const message_t *message, tlv_command_t *command)
+{
+  uint8_t _command;
+  message_result_t result = message_tlv_get(message, TLV_COMMAND, &_command, sizeof(uint8_t));
+  if (result != MESSAGE_SUCCESS) {
+    return result;
+  }
+
+  *command = _command;
+
+  return MESSAGE_SUCCESS;
+}
+
+message_result_t message_tlv_get_reply(const message_t *message, tlv_reply_t *reply)
+{
+  uint8_t _reply;
+  message_result_t result = message_tlv_get(message, TLV_REPLY, &_reply, sizeof(uint8_t));
+  if (result != MESSAGE_SUCCESS) {
+    return result;
+  }
+
+  *reply = _reply;
+
+  return MESSAGE_SUCCESS;
+}
+
+message_result_t message_tlv_get_motor_position(const message_t *message, tlv_motor_position_t *position)
+{
+  message_result_t result = message_tlv_get(message, TLV_MOTOR_POSITION, (uint8_t*) position, sizeof(tlv_motor_position_t));
+  if (result != MESSAGE_SUCCESS) {
+    return result;
+  }
+
+  position->x = ntohl(position->x);
+  position->y = ntohl(position->y);
+  position->z = ntohl(position->z);
+
+  return MESSAGE_SUCCESS;
+}
+
+message_result_t message_tlv_get_current_reading(const message_t *message, uint16_t *current)
+{
+  message_result_t result = message_tlv_get(message, TLV_CURRENT_READING, (uint8_t*) current, sizeof(uint16_t));
+  if (result != MESSAGE_SUCCESS) {
+    return result;
+  }
+
+  *current = ntohs(*current);
+
+  return MESSAGE_SUCCESS;
+}
+
+size_t message_serialized_size(const message_t *message)
+{
+  size_t size = 0;
+  for (size_t i = 0; i < message->length; i++) {
+    size += sizeof(uint8_t) + sizeof(uint16_t) + message->tlv[i].length;
+  }
+
+  return size;
+}
+
+ssize_t message_serialize(uint8_t *buffer, size_t length, const message_t *message)
 {
   size_t offset = 0;
   size_t remaining_buffer = length;

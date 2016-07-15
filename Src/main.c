@@ -60,6 +60,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 		//if received data different from 0x02 add to buffer
 		if (Rx_data[0]!=FRAME_MARKER_END){
 			//add data to Rx_Buffer
+
 			Rx_Buffer[Rx_indx++]=Rx_data[0];
 		}
 		//if received data = 0xF2 - FRAME_MARKER_END
@@ -102,19 +103,33 @@ int main(void)
 	/*Activate UART RX interrupt every time receiving 1 byte.*/
 	HAL_UART_Receive_IT(&huart1, Rx_data, 1);
 
+
 	/* Infinite loop */
 	while(True){
-		 if (Transfer_cplt != 0)
-			{
-				sprintf(buffer,"%s\r\n",Rx_Buffer);
-				len=strlen(Rx_Buffer);
-				HAL_UART_Transmit(&huart1, Rx_Buffer, message_len, 1000);
-				printf("\r\n %s", buffer);
-				for (i=0;i<100;i++) Rx_Buffer[i]=0;
-				Transfer_cplt=0;		//reset transfer_complete variable
-				//HAL_Delay(500);
-			}
+		i = 0;
+		if (Transfer_cplt != 0){
+			sprintf(buffer,"%s\r\n",Rx_Buffer);
+			len=strlen(Rx_Buffer);
+			HAL_UART_Transmit(&huart1, Rx_Buffer, message_len, 1000);
+			printf("\r\n %s", buffer);
 
+			//parse received message
+			message_t msg;
+			message_init(&msg);
+			message_t msg_parsed;
+			frame_parser(Rx_Buffer, message_len, &msg_parsed);
+			printf("Parsed protocol message: ");
+			message_print(&msg_parsed);
+			printf("\n");
+
+
+			for (i=0;i<100;i++) Rx_Buffer[i]=0;
+			Transfer_cplt=0;		//reset transfer_complete variable
+			//HAL_Delay(500);
+			i++;
+
+		}
+		i = 1;
 	}
 
 }
