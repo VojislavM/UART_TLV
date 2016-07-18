@@ -38,6 +38,7 @@ enum states{
 };
 
 char Rx_indx, Rx_data[2], Rx_Buffer[100], Transfer_cplt;
+char Rx_last[2] = {0, 0};
 
 
 void SystemClock_Config(void);
@@ -49,34 +50,53 @@ static void MX_USART2_UART_Init(void);
 
 //UART RX Interrupt callback routine
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
-
 	uint8_t i;
-	//use selected UART for receive
-	if (huart->Instance == USART1){
-		//clear Rx_Buffer before receiving new data
-		if (Rx_indx==0){
-			for (i=0;i<100;i++) Rx_Buffer[i]=0;
-		}
-		//if received data different from 0x02 add to buffer
-		if (Rx_data[0]!=FRAME_MARKER_END){
-			//add data to Rx_Buffer
+		//use selected UART for receive
+		if (huart->Instance == USART1){
 
-			Rx_Buffer[Rx_indx++]=Rx_data[0];
-		}
-		//if received data = 0xF2 - FRAME_MARKER_END
-		else{
-			Rx_Buffer[Rx_indx++]=Rx_data[0];
-			//end of frame 0xF3 - FRAME_MARKER_ESCAPE
-			if(Rx_Buffer[Rx_indx - 2] != FRAME_MARKER_ESCAPE){
-				message_len = Rx_indx;
-				Rx_indx=0;
-				Transfer_cplt=1;//transfer complete, data is ready to read
+			//clear Rx_Buffer before receiving new data
+			if (Rx_indx==0){
+				for (i=0;i<100;i++) Rx_Buffer[i]=0;
 			}
+			//start byte received
+			if(Rx_data[0] == FRAME_MARKER_START){
+				//start byte in the frame
+				if(Rx_last[0] == FRAME_MARKER_ESCAPE && Rx_Buffer[0] == FRAME_MARKER_START){
+					Rx_Buffer[Rx_indx++]=Rx_data[0];
+				}
+				//real start byte received
+				else if(Rx_last[0] != FRAME_MARKER_ESCAPE){
+					Rx_indx = 0;
+					Rx_Buffer[Rx_indx++]=Rx_data[0];
+
+				}
+			}
+			//end byte received
+			else if(Rx_data[0] == FRAME_MARKER_END){
+				//end byte in the frame
+				if(Rx_last[0] == FRAME_MARKER_ESCAPE && Rx_Buffer[0] == FRAME_MARKER_START){
+					Rx_Buffer[Rx_indx++]=Rx_data[0];
+				}
+				//real end byte received
+				else if(Rx_last[0] != FRAME_MARKER_ESCAPE && Rx_Buffer[0] == FRAME_MARKER_START){
+					Rx_Buffer[Rx_indx++]=Rx_data[0];
+					message_len = Rx_indx;
+					Rx_indx=0;
+					//transfer complete, data is ready to read
+					Transfer_cplt=1;
+				}
+			}
+			else{
+				if(Rx_Buffer[0] == FRAME_MARKER_START){
+					Rx_Buffer[Rx_indx++]=Rx_data[0];
+				}
+			}
+
+			//store last received byte for esc check
+			Rx_last[0] = Rx_data[0];
+			//activate UART receive interrupt every time
+			HAL_UART_Receive_IT(&huart1, Rx_data, 1);
 		}
-
-		HAL_UART_Receive_IT(&huart1, Rx_data, 1);	//activate UART receive interrupt every time
-	}
-
 }
 
 
