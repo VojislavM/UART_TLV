@@ -157,7 +157,7 @@ message_result_t message_tlv_get(const message_t *message, uint8_t type, uint8_t
 {
   for (size_t i = 0; i < message->length; i++) {
     if (message->tlv[i].type == type) {
-      assert(message->tlv[i].length <= length);
+      //assert(message->tlv[i].length <= length);
       memcpy(destination, message->tlv[i].value, message->tlv[i].length);
       return MESSAGE_SUCCESS;
     }

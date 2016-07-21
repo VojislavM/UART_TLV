@@ -24,8 +24,7 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* Private variables ---------------------------------------------------------*/
-int i = 0;
-char buffer[100];
+int test, i = 0;
 int len, message_len = 0;
 
 enum states{
@@ -36,8 +35,10 @@ enum states{
 	REBOOT,
 	FIRMWARE_UPGRADE,
 };
-
-char Rx_indx, Rx_data[2], Rx_Buffer[100], Transfer_cplt;
+volatile uint8_t Rx_Buffer[100];
+uint8_t  Rx_data[2];
+int Rx_indx;
+int Transfer_cplt;
 char Rx_last[2] = {0, 0};
 
 
@@ -51,59 +52,61 @@ static void MX_USART2_UART_Init(void);
 //UART RX Interrupt callback routine
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 	uint8_t i;
-		//use selected UART for receive
-		if (huart->Instance == USART1){
+	//use selected UART for receive
+	if (huart->Instance == USART1){
 
-			//clear Rx_Buffer before receiving new data
-			if (Rx_indx==0){
-				for (i=0;i<100;i++) Rx_Buffer[i]=0;
-			}
-			//start byte received
-			if(Rx_data[0] == FRAME_MARKER_START){
-				//start byte in the frame
-				if(Rx_last[0] == FRAME_MARKER_ESCAPE && Rx_Buffer[0] == FRAME_MARKER_START){
-					Rx_Buffer[Rx_indx++]=Rx_data[0];
-				}
-				//real start byte received
-				else if(Rx_last[0] != FRAME_MARKER_ESCAPE){
-					Rx_indx = 0;
-					Rx_Buffer[Rx_indx++]=Rx_data[0];
-
-				}
-			}
-			//end byte received
-			else if(Rx_data[0] == FRAME_MARKER_END){
-				//end byte in the frame
-				if(Rx_last[0] == FRAME_MARKER_ESCAPE && Rx_Buffer[0] == FRAME_MARKER_START){
-					Rx_Buffer[Rx_indx++]=Rx_data[0];
-				}
-				//real end byte received
-				else if(Rx_last[0] != FRAME_MARKER_ESCAPE && Rx_Buffer[0] == FRAME_MARKER_START){
-					Rx_Buffer[Rx_indx++]=Rx_data[0];
-					message_len = Rx_indx;
-					Rx_indx=0;
-					//transfer complete, data is ready to read
-					Transfer_cplt=1;
-				}
-			}
-			else{
-				if(Rx_Buffer[0] == FRAME_MARKER_START){
-					Rx_Buffer[Rx_indx++]=Rx_data[0];
-				}
-			}
-
-			//store last received byte for esc check
-			Rx_last[0] = Rx_data[0];
-			//activate UART receive interrupt every time
-			HAL_UART_Receive_IT(&huart1, Rx_data, 1);
+		//clear Rx_Buffer before receiving new data
+		if (Rx_indx==0){
+			for (i=0;i<100;i++) Rx_Buffer[i]=0;
 		}
+		//start byte received
+		if(Rx_data[0] == FRAME_MARKER_START){
+			//start byte in the frame
+			if(Rx_last[0] == FRAME_MARKER_ESCAPE && Rx_Buffer[0] == FRAME_MARKER_START){
+				Rx_Buffer[Rx_indx++]=Rx_data[0];
+			}
+			//real start byte received
+			else if(Rx_last[0] != FRAME_MARKER_ESCAPE){
+				Rx_indx = 0;
+				Rx_Buffer[Rx_indx++]=Rx_data[0];
+
+			}
+		}
+		//end byte received
+		else if(Rx_data[0] == FRAME_MARKER_END){
+			//end byte in the frame
+			if(Rx_last[0] == FRAME_MARKER_ESCAPE && Rx_Buffer[0] == FRAME_MARKER_START){
+				Rx_Buffer[Rx_indx++]=Rx_data[0];
+			}
+			//real end byte received
+			else if(Rx_last[0] != FRAME_MARKER_ESCAPE && Rx_Buffer[0] == FRAME_MARKER_START){
+				Rx_Buffer[Rx_indx++]=Rx_data[0];
+				message_len = Rx_indx;
+				Rx_indx=0;
+				//transfer complete, data is ready to read
+				Transfer_cplt=1;
+				HAL_NVIC_DisableIRQ(USART1_IRQn);
+			}
+		}
+		else{
+			if(Rx_Buffer[0] == FRAME_MARKER_START){
+				Rx_Buffer[Rx_indx++]=Rx_data[0];
+			}
+		}
+
+		//store last received byte for esc check
+		Rx_last[0] = Rx_data[0];
+		//activate UART receive interrupt every time
+		HAL_UART_Receive_IT(&huart1, (uint8_t *)&Rx_data, 1);
+	}
 }
 
 
 int main(void)
 {
-	enum states state = IDLE;
+	//enum states state = IDLE;
 	/* MCU Configuration----------------------------------------------------------*/
+
 
 	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
 	HAL_Init();
@@ -121,35 +124,68 @@ int main(void)
 	printf("\n\n");
 
 	/*Activate UART RX interrupt every time receiving 1 byte.*/
-	HAL_UART_Receive_IT(&huart1, Rx_data, 1);
+	HAL_UART_Receive_IT(&huart1, (uint8_t *)&Rx_data, 1);
+
+	//generate message
+	message_t msg;
+	message_init(&msg);
+	message_tlv_add_command(&msg, COMMAND_MOVE_MOTOR);
+	tlv_motor_position_t position = {10, 20, -15};
+	message_tlv_add_motor_position(&msg, &position);
+	message_tlv_add_checksum(&msg);
+
+	message_t msg_parsed;
+	tlv_command_t parsed_command;
+	tlv_motor_position_t parsed_position;
 
 
 	/* Infinite loop */
 	while(True){
-		i = 0;
+		test = 0;
 		if (Transfer_cplt != 0){
-			sprintf(buffer,"%s\r\n",Rx_Buffer);
+			//sprintf(buffer,"%s\r\n",Rx_Buffer);
 			len=strlen(Rx_Buffer);
-			HAL_UART_Transmit(&huart1, Rx_Buffer, message_len, 1000);
-			printf("\r\n %s", buffer);
+			HAL_UART_Transmit(&huart1, (uint8_t *)&Rx_Buffer, message_len, 1000);
+			//printf("\r\n %s", buffer);
 
 			//parse received message
-			message_t msg;
-			message_init(&msg);
-			message_t msg_parsed;
 			frame_parser(Rx_Buffer, message_len, &msg_parsed);
 			printf("Parsed protocol message: ");
 			message_print(&msg_parsed);
 			printf("\n");
 
 
-			for (i=0;i<100;i++) Rx_Buffer[i]=0;
+			if (message_tlv_get_command(&msg_parsed, &parsed_command) != MESSAGE_SUCCESS) {
+				printf("Failed to get command TLV.\n");
+				message_free(&msg_parsed);
+				//return -1;
+			}
+
+			if (message_tlv_get_motor_position(&msg_parsed, &parsed_position) != MESSAGE_SUCCESS) {
+				printf("Failed to get motor position TLV.\n");
+				message_free(&msg_parsed);
+				//return -1;
+			}
+
+			printf("Parsed command %u and motor position (%d, %d, %d)\n", parsed_command, (int)parsed_position.x, (int)parsed_position.y, (int)parsed_position.z);
+
+			if (parsed_command != COMMAND_MOVE_MOTOR ||
+					parsed_position.x != position.x ||
+					parsed_position.y != position.y ||
+					parsed_position.z != position.z) {
+			    printf("Parsed values are invalid.\n");
+			    message_free(&msg_parsed);
+			    //return -1;
+			}
+
+			HAL_NVIC_EnableIRQ(USART1_IRQn);
+			HAL_UART_Receive_IT(&huart1, (uint8_t *)&Rx_data, 1);
 			Transfer_cplt=0;		//reset transfer_complete variable
-			//HAL_Delay(500);
-			i++;
+			HAL_Delay(500);
+			test++;
 
 		}
-		i = 1;
+		test = 1;
 	}
 
 }
