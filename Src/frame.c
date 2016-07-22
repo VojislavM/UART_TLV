@@ -1,6 +1,7 @@
 #include "frame.h"
 #include "message.h"
 
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -36,11 +37,15 @@ void frame_parser(uint8_t *buffer, uint8_t length, message_t *msg){
 					// End of frame.
 					message_result_t result = message_parse(msg, message, msg_count);
 					if (result == MESSAGE_SUCCESS) {
-						printf("Parsed protocol message: ");
-						message_print(msg);
+#ifdef DEBUG_MODE
+						printf("Message parsed");
+						//message_print(msg);
 						printf("\n");
+#endif
 					} else {
+#ifdef DEBUG_MODE
 						printf("Failed to parse serialized message: %d\n", result);
+#endif
 					}
 					length = 0;
 					state = SERIAL_STATE_WAIT_START;

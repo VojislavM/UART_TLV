@@ -3,6 +3,10 @@
 
 #include "message.h"
 
+/* Uncomment to get debug messages in the UART2 terminal*/
+//#define DEBUG_MODE
+
+
 /**
  * Parser states.
  */
