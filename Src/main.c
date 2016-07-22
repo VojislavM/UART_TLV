@@ -36,7 +36,8 @@ enum states{
 	FIRMWARE_UPGRADE,
 };
 volatile uint8_t Rx_Buffer[100];
-uint8_t  Rx_data[2];
+uint8_t Rx_data[2];
+uint8_t tx_responce_buffer[1024];
 int Rx_indx;
 int Transfer_cplt;
 char Rx_last[2] = {0, 0};
@@ -138,29 +139,70 @@ int main(void)
 	tlv_command_t parsed_command;
 	tlv_motor_position_t parsed_position;
 
+	//Response message
+	message_t msg_responce;
+	//message_init(&msg_responce);
+
+	uint8_t frame[1024];
+	ssize_t frame_size;
+
+
 
 	/* Infinite loop */
 	while(True){
 		test = 0;
 		if (Transfer_cplt != 0){
 			//sprintf(buffer,"%s\r\n",Rx_Buffer);
-			len=strlen(Rx_Buffer);
+			//len=strlen(Rx_Buffer);
 			HAL_UART_Transmit(&huart1, (uint8_t *)&Rx_Buffer, message_len, 1000);
 			//printf("\r\n %s", buffer);
 
 			//parse received message
-			frame_parser(Rx_Buffer, message_len, &msg_parsed);
+			frame_parser((uint8_t *)&Rx_Buffer, message_len, &msg_parsed);
 			printf("Parsed protocol message: ");
 			message_print(&msg_parsed);
 			printf("\n");
 
-
+			//parse received message command
 			if (message_tlv_get_command(&msg_parsed, &parsed_command) != MESSAGE_SUCCESS) {
 				printf("Failed to get command TLV.\n");
 				message_free(&msg_parsed);
 				//return -1;
 			}
 
+			switch(parsed_command){
+				case COMMAND_GET_STATUS:
+					//Response message
+					message_init(&msg_responce);
+					message_tlv_add_reply(&msg_responce, REPLY_STATUS_REPORT);
+					message_tlv_add_motor_position(&msg_responce, &position);
+					message_tlv_add_checksum(&msg_responce);
+					printf("\n");
+					printf("Parsed protocol message responce: ");
+					message_print(&msg_responce);
+					printf("\n");
+
+					len = message_serialize(tx_responce_buffer, 1024, &msg_responce);
+
+					frame_size = frame_message(frame, sizeof(frame), &msg_responce);
+					//send status message
+					HAL_UART_Transmit(&huart1, (uint8_t *)&frame, frame_size, 1000);
+					//clear the frame buffer;
+					//for (i=0;i<frame_size;i++) frame[i]=0;
+					message_free(&msg_responce);
+					break;
+
+				case COMMAND_MOVE_MOTOR:
+					break;
+				case COMMAND_SEND_IR:
+					break;
+				case COMMAND_REBOOT:
+					break;
+				case COMMAND_FIRMWARE_UPGRADE:
+					break;
+
+			}
+/*
 			if (message_tlv_get_motor_position(&msg_parsed, &parsed_position) != MESSAGE_SUCCESS) {
 				printf("Failed to get motor position TLV.\n");
 				message_free(&msg_parsed);
@@ -177,11 +219,11 @@ int main(void)
 			    message_free(&msg_parsed);
 			    //return -1;
 			}
-
+*/
 			HAL_NVIC_EnableIRQ(USART1_IRQn);
 			HAL_UART_Receive_IT(&huart1, (uint8_t *)&Rx_data, 1);
 			Transfer_cplt=0;		//reset transfer_complete variable
-			HAL_Delay(500);
+			//HAL_Delay(500);
 			test++;
 
 		}

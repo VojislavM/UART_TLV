@@ -59,9 +59,49 @@ void frame_parser(uint8_t *buffer, uint8_t length, message_t *msg){
 		}//end switch
 	}//end for
 }//end function
-/*
+
+
 ssize_t frame_message(uint8_t *frame, size_t length, const message_t *message){
-	size_t index;
+	// First check if there is not enough space in the output buffer. This is
+	// an optimistic estimate (assumes no escaping is needed).
+	size_t buffer_size = message_serialized_size(message);
+	if (length < buffer_size + 2) {
+		return -1;
+	}
+
+	// Serialize message into buffer.
+	uint8_t *buffer = (uint8_t*) malloc(buffer_size);
+	if (!buffer) {
+		abort();
+	}
+
+	ssize_t result = message_serialize(buffer, buffer_size, message);
+	if (result != buffer_size) {
+		free(buffer);
+		return -1;
+	}
+
+	// Frame the message, inserting escape markers when needed.
+	size_t index = 0;
+	frame[index++] = FRAME_MARKER_START;
+	for (size_t i = 0; i < buffer_size; i++) {
+		if (index >= length) {
+			free(buffer);
+			return -1;
+		}
+
+		// Escape frame markers.
+		if (buffer[i] == FRAME_MARKER_START ||
+			buffer[i] == FRAME_MARKER_END ||
+			buffer[i] == FRAME_MARKER_ESCAPE) {
+		  frame[index++] = FRAME_MARKER_ESCAPE;
+		}
+
+		frame[index++] = buffer[i];
+	}
+	frame[index++] = FRAME_MARKER_END;
+
+	free(buffer);
 	return index;
 };
-*/
+
