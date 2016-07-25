@@ -2,7 +2,9 @@
 #include "stm32f4xx_hal.h"
 #include "message.h"
 #include "frame.h"
+#include "AccelStepper.h"
 #include <stdio.h>
+#include "main.h"
 
 
 #ifdef __GNUC__
@@ -11,12 +13,6 @@
 #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
 #endif /* __GNUC__ */
 
-#define RXBUFFERSIZE 100
-#define True 1
-#define False 0
-
-/* Uncomment to get debug messages in the UART2 terminal*/
-#define DEBUG_MODE
 
 /* Struct FILE is implemented in stdio.h */
 FILE __stdout;
@@ -29,27 +25,12 @@ UART_HandleTypeDef huart2;
 int test, i = 0;
 int len, message_len = 0;
 
-enum states{
-	IDLE,
-	GET_STATUS,
-	MOVE_MOTOR,
-	SNED_IR,
-	REBOOT,
-	FIRMWARE_UPGRADE,
-};
 volatile uint8_t Rx_Buffer[100];
 uint8_t Rx_data[2];
 uint8_t tx_responce_buffer[1024];
 int Rx_indx;
 int Transfer_cplt;
 char Rx_last[2] = {0, 0};
-
-
-void SystemClock_Config(void);
-void Error_Handler(void);
-static void MX_GPIO_Init(void);
-static void MX_USART1_UART_Init(void);
-static void MX_USART2_UART_Init(void);
 
 
 /* UART RX Interrupt callback routine */
@@ -122,12 +103,13 @@ int main(void)
 	MX_USART1_UART_Init();
 	MX_USART2_UART_Init();
 
-#ifdef DEBUG_MODE
-	printf("Hello\r\nKoruza driver terminal \r\n");
-	printf("\n\n");
-#endif
-	/*Activate UART RX interrupt every time receiving 1 byte.*/
-	HAL_UART_Receive_IT(&huart1, (uint8_t *)&Rx_data, 1);
+	/* Stepper motors struts */
+	Stepper_t stepper_motor_x;
+	Stepper_t stepper_motor_y;
+	Stepper_t stepper_motor_z;
+
+	/* Stepper motors initialization */
+	Init_motors(&stepper_motor_x, &stepper_motor_y, &stepper_motor_z);
 
 	/* Generate message - test message */
 	message_t msg;
@@ -149,10 +131,22 @@ int main(void)
 	uint8_t frame[1024];
 	ssize_t frame_size;
 
+#ifdef DEBUG_MODE
+	printf("Hello\r\nKoruza driver terminal \r\n");
+	printf("\n\n");
+#endif
 
+	/*Activate UART RX interrupt every time receiving 1 byte.*/
+	HAL_UART_Receive_IT(&huart1, (uint8_t *)&Rx_data, 1);
 
 	/* Infinite loop */
 	while(True){
+
+		/* Move steppers. */
+		run(&stepper_motor_x);
+		run(&stepper_motor_y);
+		run(&stepper_motor_z);
+
 		test = 0;
 		//frame received
 		if (Transfer_cplt != 0){
@@ -271,7 +265,7 @@ void SystemClock_Config(void)
     Error_Handler();
   }
 
-  HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
+  HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/100000);
 
   HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
 
@@ -281,7 +275,7 @@ void SystemClock_Config(void)
 }
 
 /* USART1 init function */
-static void MX_USART1_UART_Init(void)
+void MX_USART1_UART_Init(void)
 {
 
   huart1.Instance = USART1;
@@ -300,7 +294,7 @@ static void MX_USART1_UART_Init(void)
 }
 
 /* USART2 init function */
-static void MX_USART2_UART_Init(void)
+void MX_USART2_UART_Init(void)
 {
 
   huart2.Instance = USART2;
@@ -325,10 +319,10 @@ static void MX_USART2_UART_Init(void)
         * EVENT_OUT
         * EXTI
 */
-static void MX_GPIO_Init(void)
+void MX_GPIO_Init(void)
 {
 
-  GPIO_InitTypeDef GPIO_InitStruct;
+  //GPIO_InitTypeDef GPIO_InitStruct;
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -337,23 +331,54 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin : B1_Pin */
+  /*
   GPIO_InitStruct.Pin = B1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
-
+*/
   /*Configure GPIO pin : LD2_Pin */
+  /*
   GPIO_InitStruct.Pin = LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
-
+*/
   /*Configure GPIO pin Output Level */
+  /*
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-
+*/
 }
 
+
+void Init_motors(Stepper_t *stepper_x, Stepper_t *stepper_y, Stepper_t *stepper_z){
+
+	/*## Initialize X axis stepper. ###*/
+	InitStepper(stepper_x, HALF4WIRE, MOTOR_PIN_X_1, MOTOR_PORT_X_1, MOTOR_PIN_X_2, MOTOR_PORT_X_2, MOTOR_PIN_X_3, MOTOR_PORT_X_3, MOTOR_PIN_X_4, MOTOR_PORT_X_4, 1);
+	setMaxSpeed(stepper_x, 500);
+	setSpeed(stepper_x, 500);
+	setAcceleration(stepper_x, 500);
+	moveTo(stepper_x, -10000000);
+	enableOutputs(stepper_x);
+
+	/*## Initialize Y axis stepper. ###*/
+	InitStepper(stepper_y, HALF4WIRE, MOTOR_PIN_Y_1, MOTOR_PORT_Y_1, MOTOR_PIN_Y_2, MOTOR_PORT_Y_2, MOTOR_PIN_Y_3, MOTOR_PORT_Y_3, MOTOR_PIN_Y_4, MOTOR_PORT_Y_4, 1);
+	setMaxSpeed(stepper_y, 500);
+	setSpeed(stepper_y, 500);
+	setAcceleration(stepper_y, 500);
+	moveTo(stepper_y, -10000000);
+	enableOutputs(stepper_y);
+
+	/*## Initialize Z axis stepper. ###*/
+	InitStepper(stepper_z, HALF4WIRE, MOTOR_PIN_Z_1, MOTOR_PORT_Z_1, MOTOR_PIN_Z_2, MOTOR_PORT_Z_2, MOTOR_PIN_Z_3, MOTOR_PORT_Z_3, MOTOR_PIN_Z_4, MOTOR_PORT_Z_4, 1);
+	setMaxSpeed(stepper_z, 500);
+	setSpeed(stepper_z, 500);
+	setAcceleration(stepper_z, 500);
+	moveTo(stepper_z, -10000000);
+	enableOutputs(stepper_z);
+
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.

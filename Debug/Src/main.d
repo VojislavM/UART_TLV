@@ -27,7 +27,9 @@ Src/main.o: ../Src/main.c \
  C:/Users/vojis/Documents/stm_projects/USART_TLV/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
  C:/Users/vojis/Documents/stm_projects/USART_TLV/Inc/message.h \
  C:/Users/vojis/Documents/stm_projects/USART_TLV/Inc/frame.h \
- C:/Users/vojis/Documents/stm_projects/USART_TLV/Inc/message.h
+ C:/Users/vojis/Documents/stm_projects/USART_TLV/Inc/message.h \
+ C:/Users/vojis/Documents/stm_projects/USART_TLV/Inc/AccelStepper.h \
+ C:/Users/vojis/Documents/stm_projects/USART_TLV/Inc/main.h
 
 C:/Users/vojis/Documents/stm_projects/USART_TLV/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 
@@ -86,3 +88,7 @@ C:/Users/vojis/Documents/stm_projects/USART_TLV/Inc/message.h:
 C:/Users/vojis/Documents/stm_projects/USART_TLV/Inc/frame.h:
 
 C:/Users/vojis/Documents/stm_projects/USART_TLV/Inc/message.h:
+
+C:/Users/vojis/Documents/stm_projects/USART_TLV/Inc/AccelStepper.h:
+
+C:/Users/vojis/Documents/stm_projects/USART_TLV/Inc/main.h:

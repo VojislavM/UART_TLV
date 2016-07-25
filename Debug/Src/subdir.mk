@@ -4,6 +4,7 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../Src/AccelStepper.c \
 ../Src/crc32.c \
 ../Src/frame.c \
 ../Src/inet.c \
@@ -14,6 +15,7 @@ C_SRCS += \
 ../Src/syscalls.c 
 
 OBJS += \
+./Src/AccelStepper.o \
 ./Src/crc32.o \
 ./Src/frame.o \
 ./Src/inet.o \
@@ -24,6 +26,7 @@ OBJS += \
 ./Src/syscalls.o 
 
 C_DEPS += \
+./Src/AccelStepper.d \
 ./Src/crc32.d \
 ./Src/frame.d \
 ./Src/inet.d \
@@ -39,7 +42,7 @@ Src/%.o: ../Src/%.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: MCU GCC Compiler'
 	@echo %cd%
-	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -D__weak="__attribute__((weak))" -D__packed="__attribute__((__packed__))" -DUSE_HAL_DRIVER -DSTM32F411xE -I"C:/Users/vojis/Documents/stm_projects/USART_TLV/Inc" -I"C:/Users/vojis/Documents/stm_projects/USART_TLV/Drivers/STM32F4xx_HAL_Driver/Inc" -I"C:/Users/vojis/Documents/stm_projects/USART_TLV/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy" -I"C:/Users/vojis/Documents/stm_projects/USART_TLV/Drivers/CMSIS/Include" -I"C:/Users/vojis/Documents/stm_projects/USART_TLV/Drivers/CMSIS/Device/ST/STM32F4xx/Include"  -Os -g3 -Wall -fmessage-length=0 -ffunction-sections -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -D__weak="__attribute__((weak))" -D__packed="__attribute__((__packed__))" -DUSE_HAL_DRIVER -DSTM32F411xE -DSTM32F4 -DSTM32 -I"C:/Users/vojis/Documents/stm_projects/USART_TLV/Inc" -I"C:/Users/vojis/Documents/stm_projects/USART_TLV/Drivers/STM32F4xx_HAL_Driver/Inc" -I"C:/Users/vojis/Documents/stm_projects/USART_TLV/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy" -I"C:/Users/vojis/Documents/stm_projects/USART_TLV/Drivers/CMSIS/Include" -I"C:/Users/vojis/Documents/stm_projects/USART_TLV/Drivers/CMSIS/Device/ST/STM32F4xx/Include"  -Os -g3 -Wall -fmessage-length=0 -ffunction-sections -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
